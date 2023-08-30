@@ -244,6 +244,7 @@ dependencies = [
  "atty",
  "log",
  "nix",
+ "regex",
  "serde",
  "serde_json",
  "serde_yaml",

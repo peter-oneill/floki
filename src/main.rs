@@ -8,6 +8,7 @@ mod config;
 mod dind;
 mod environment;
 mod errors;
+mod hooks;
 mod image;
 mod interpret;
 mod spec;
@@ -18,6 +19,7 @@ use cli::{Cli, Subcommand};
 use config::FlokiConfig;
 use environment::Environment;
 use errors::FlokiError;
+use hooks::run_command;
 use structopt::StructOpt;
 
 fn main() -> Result<(), Error> {
@@ -48,6 +50,7 @@ fn run_floki_from_args(args: &Cli) -> Result<(), Error> {
         Some(Subcommand::Pull {}) => {
             let env = Environment::gather(&args.config_file)?;
             let config = FlokiConfig::from_file(&env.config_file)?;
+            run_command(&config.pre_build_hook, &env.config_file)?;
             image::pull_image(&config.image.name()?)
         }
 
@@ -56,6 +59,7 @@ fn run_floki_from_args(args: &Cli) -> Result<(), Error> {
             let env = Environment::gather(&args.config_file)?;
             let config = FlokiConfig::from_file(&env.config_file)?;
             let inner_command = interpret::command_in_shell(config.shell.inner_shell(), command);
+            run_command(&config.pre_build_hook, &env.config_file)?;
             interpret::run_floki_container(&spec::FlokiSpec::from(config, env)?, &inner_command)
         }
 
@@ -76,6 +80,7 @@ fn run_floki_from_args(args: &Cli) -> Result<(), Error> {
             let env = Environment::gather(&args.config_file)?;
             let config = FlokiConfig::from_file(&env.config_file)?;
             let inner_command = config.shell.inner_shell().to_string();
+            run_command(&config.pre_build_hook, &env.config_file)?;
             interpret::run_floki_container(&spec::FlokiSpec::from(config, env)?, &inner_command)
         }
     }

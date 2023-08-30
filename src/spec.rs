@@ -74,6 +74,8 @@ pub(crate) struct FlokiSpec {
     pub(crate) dind: Option<Dind>,
     /// Paths on the host which are relevant to running
     pub(crate) paths: Paths,
+    /// Command to run before starting the container
+    pub(crate) pre_run_hook: Option<String>,
 }
 
 impl FlokiSpec {
@@ -131,6 +133,7 @@ impl FlokiSpec {
             docker_switches,
             dind,
             paths,
+            pre_run_hook: config.pre_run_hook,
         };
 
         debug!("built spec from config and environment: {:?}", spec);

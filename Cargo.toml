@@ -32,6 +32,7 @@ tera = "1"
 serde_json = "1.0.103"
 toml = "0.7.6"
 shell-words = "1.1.0"
+regex = "1.7"
 
 [dev-dependencies]
 tempfile = "3.6.0"

@@ -60,6 +60,12 @@ pub enum FlokiError {
         exit_status: FlokiSubprocessExitStatus,
     },
 
+    #[error("Failed to run hook '{hook}': {error:?}")]
+    FailedToRunHook { hook: String, error: io::Error },
+
+    #[error("Hook '{hook}' failed with {status}.")]
+    HookFailed { hook: String, status: ExitStatus },
+
     #[error("Unable to forward ssh socket - cannot find SSH_AUTH_SOCK in environment - do you have an ssh agent running?")]
     NoSshAuthSock {},
 
