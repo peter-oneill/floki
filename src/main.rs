@@ -19,8 +19,10 @@ use cli::{Cli, Subcommand};
 use config::FlokiConfig;
 use environment::Environment;
 use errors::FlokiError;
-use hooks::run_command;
+use hooks::run_hook;
 use structopt::StructOpt;
+
+use crate::hooks::run_pre_render_hook;
 
 fn main() -> Result<(), Error> {
     let args = Cli::from_args();
@@ -50,7 +52,7 @@ fn run_floki_from_args(args: &Cli) -> Result<(), Error> {
         Some(Subcommand::Pull {}) => {
             let env = Environment::gather(&args.config_file)?;
             let config = FlokiConfig::from_file(&env.config_file)?;
-            run_command(&config.pre_build_hook, &env.config_file)?;
+            run_hook(&config.pre_build_hook, &env.config_file)?;
             image::pull_image(&config.image.name()?)
         }
 
@@ -59,7 +61,7 @@ fn run_floki_from_args(args: &Cli) -> Result<(), Error> {
             let env = Environment::gather(&args.config_file)?;
             let config = FlokiConfig::from_file(&env.config_file)?;
             let inner_command = interpret::command_in_shell(config.shell.inner_shell(), command);
-            run_command(&config.pre_build_hook, &env.config_file)?;
+            run_hook(&config.pre_build_hook, &env.config_file)?;
             interpret::run_floki_container(&spec::FlokiSpec::from(config, env)?, &inner_command)
         }
 
@@ -70,6 +72,7 @@ fn run_floki_from_args(args: &Cli) -> Result<(), Error> {
 
         Some(Subcommand::Render {}) => {
             let env = Environment::gather(&args.config_file)?;
+            let _ = run_pre_render_hook(&env.config_file)?;
             let contents = FlokiConfig::render(&env.config_file)?;
             println!("{contents}");
             Ok(())
@@ -80,7 +83,7 @@ fn run_floki_from_args(args: &Cli) -> Result<(), Error> {
             let env = Environment::gather(&args.config_file)?;
             let config = FlokiConfig::from_file(&env.config_file)?;
             let inner_command = config.shell.inner_shell().to_string();
-            run_command(&config.pre_build_hook, &env.config_file)?;
+            run_hook(&config.pre_build_hook, &env.config_file)?;
             interpret::run_floki_container(&spec::FlokiSpec::from(config, env)?, &inner_command)
         }
     }

@@ -1,7 +1,7 @@
 use crate::command;
 use crate::command::DockerCommandBuilder;
 use crate::dind::Dind;
-use crate::hooks::run_command;
+use crate::hooks::run_hook;
 use crate::spec;
 use crate::volumes::resolve_volume_mounts;
 
@@ -20,7 +20,7 @@ pub(crate) fn run_floki_container(
     let volumes = resolve_volume_mounts(&spec.paths.config, &spec.paths.workspace, &spec.volumes);
     instantiate_volumes(&volumes)?;
 
-    run_command(&spec.pre_run_hook, &spec.paths.config)?;
+    run_hook(&spec.pre_run_hook, &spec.paths.config)?;
 
     cmd = configure_volumes(cmd, &volumes);
     cmd = cmd.add_environment("FLOKI_HOST_MOUNTDIR", &spec.paths.root);

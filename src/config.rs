@@ -1,6 +1,6 @@
 /// Configuration file format for floki
 use crate::errors::FlokiError;
-use crate::hooks::find_pre_render_hook;
+use crate::hooks::run_pre_render_hook;
 use crate::image;
 use serde::{Deserialize, Serialize};
 use tera::from_value;
@@ -97,12 +97,12 @@ pub(crate) struct FlokiConfig {
     pub(crate) volumes: BTreeMap<String, Volume>,
     #[serde(default = "default_entrypoint")]
     pub(crate) entrypoint: Entrypoint,
-    // #[serde(default = "None")]
-    pub(crate) pre_render_hook: Option<String>,
-    // #[serde(default = "None")]
-    pub(crate) pre_build_hook: Option<String>,
-    // #[serde(default = "None")]
-    pub(crate) pre_run_hook: Option<String>,
+    #[serde(default = "Vec::new")]
+    pub(crate) pre_render_hook: Vec<String>,
+    #[serde(default = "Vec::new")]
+    pub(crate) pre_build_hook: Vec<String>,
+    #[serde(default = "Vec::new")]
+    pub(crate) pre_run_hook: Vec<String>,
 }
 
 fn path_from_args(args: &HashMap<String, tera::Value>) -> tera::Result<String> {
@@ -202,7 +202,7 @@ impl FlokiConfig {
 
     pub fn from_file(file: &Path) -> Result<Self, FlokiError> {
         debug!("Reading configuration file: {:?}", file);
-        find_pre_render_hook(file);
+        let _ = run_pre_render_hook(file)?;
 
         // Render the output from the configuration file before parsing.
         let output = Self::render(file)?;

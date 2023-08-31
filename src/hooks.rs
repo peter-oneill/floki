@@ -1,6 +1,7 @@
 use crate::errors::FlokiError;
 use anyhow::Error;
-use regex::Regex;
+use fancy_regex::Regex;
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::{
     path::Path,
@@ -9,10 +10,23 @@ use std::{
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct HookConfig {
-    pub(crate) pre_render_hook: Option<String>,
+    pub(crate) pre_render_hook: Vec<String>,
 }
 
-pub fn find_pre_render_hook(file: &Path) {
+lazy_static! {
+    static ref PRE_RENDER_HOOK_REGEX: Regex =
+        Regex::new(
+            // (Multi-line match)
+            // Starting with some amount of whitespace before a "pre_render_hook:" key
+            // ...and any more characters on the same line
+            // Then any number of lines that start with either
+            // - the same amount of whitespace, followed by a dash
+            //   ...and any more characters on the same line
+            // - a greater amount of whitespace, followed by anything
+            r"(?m)^(\s*)pre_render_hook:.*(\n\1[\s\-].+$)*").unwrap();
+}
+
+pub fn run_pre_render_hook(file: &Path) -> Result<(), FlokiError> {
     let content = std::fs::read_to_string(file)
         .map_err(|e| FlokiError::ProblemOpeningConfigYaml {
             name: file.display().to_string(),
@@ -20,31 +34,36 @@ pub fn find_pre_render_hook(file: &Path) {
         })
         .unwrap();
 
-    let matcher = Regex::new("pre_render_hook: *(?<numbers>.*)").unwrap();
+    let pre_render_hook = PRE_RENDER_HOOK_REGEX
+        .find(&content)
+        .expect("Invalid pre-render-hook regex")
+        .map(|m| m.as_str())
+        .unwrap_or_default();
 
-    let myfoo = matcher
-        .captures(&content)
-        .map(|c| c.name("numbers").unwrap().as_str().to_string());
+    debug!("pre-render hook yaml:\n{}", pre_render_hook);
 
-    run_command(&myfoo, file);
+    let hook: HookConfig = serde_yaml::from_str(pre_render_hook).map_err(|e| {
+        FlokiError::ProblemParsingConfigYamlSnippet {
+            error: e,
+            snippet: pre_render_hook.to_string(),
+        }
+    })?;
+
+    run_hook(&hook.pre_render_hook, file)
 }
 
-pub fn run_command(cmd: &Option<String>, config_path: &Path) -> Result<(), Error> {
-    if let None = &cmd {
+pub fn run_hook(cmd: &Vec<String>, config_path: &Path) -> Result<(), FlokiError> {
+    if cmd.is_empty() {
         return Ok(());
     }
-
-    let cmd = cmd.clone().unwrap();
+    let (exe, args) = cmd.split_first().unwrap();
 
     let working_dir = config_path
         .parent()
         .expect("File should have a parent directory");
 
     debug!("Running command: {:?}", cmd);
-
-    let mut cmd_elements = cmd.split_whitespace();
-    let exe = cmd_elements.next().unwrap();
-    let args: Vec<&str> = cmd_elements.collect();
+    let cmd_str = cmd.join(" ");
 
     let status = Command::new(exe)
         .args(args)
@@ -53,7 +72,7 @@ pub fn run_command(cmd: &Option<String>, config_path: &Path) -> Result<(), Error
         .stderr(Stdio::inherit())
         .output()
         .map_err(|e| FlokiError::FailedToRunHook {
-            hook: cmd.clone(),
+            hook: cmd_str.clone(),
             error: e,
         })?
         .status;
@@ -62,9 +81,8 @@ pub fn run_command(cmd: &Option<String>, config_path: &Path) -> Result<(), Error
         Ok(())
     } else {
         Err(FlokiError::HookFailed {
-            hook: cmd,
+            hook: cmd_str.clone(),
             status: status,
-        }
-        .into())
+        })
     }
 }

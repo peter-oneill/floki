@@ -31,6 +31,12 @@ pub enum FlokiError {
         error: serde_yaml::Error,
     },
 
+    #[error("There was a problem parsing the yaml config snippet: {error:?}\nSnippet:\n\"\"\"\n{snippet}\n\"\"\"")]
+    ProblemParsingConfigYamlSnippet {
+        snippet: String,
+        error: serde_yaml::Error,
+    },
+
     #[error("Running docker command failed with error: {error:?}")]
     FailedToLaunchDocker { error: io::Error },
 

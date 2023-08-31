@@ -75,7 +75,7 @@ pub(crate) struct FlokiSpec {
     /// Paths on the host which are relevant to running
     pub(crate) paths: Paths,
     /// Command to run before starting the container
-    pub(crate) pre_run_hook: Option<String>,
+    pub(crate) pre_run_hook: Vec<String>,
 }
 
 impl FlokiSpec {
